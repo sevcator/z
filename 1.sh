@@ -160,23 +160,16 @@ run_ussd() {
     return
   fi
 
-  if command -v ussd >/dev/null 2>&1; then
-    echo "Command: ussd" >> "$ACTION_RESULT"
-    ussd "$CODE" >> "$ACTION_RESULT" 2>&1
+  if command -v microcom >/dev/null 2>&1; then
+    echo "Command: microcom (AT+CUSD)" >> "$ACTION_RESULT"
+    {
+      echo "AT+CUSD=1,\"$CODE\",15"
+      sleep 3
+    } | microcom -t 5000 /dev/ttyUSB2 >> "$ACTION_RESULT" 2>&1
     return
   fi
 
-  if command -v gsmctl >/dev/null 2>&1; then
-    echo "Command: gsmctl -U" >> "$ACTION_RESULT"
-    gsmctl -U "$CODE" >> "$ACTION_RESULT" 2>&1
-
-    echo "" >> "$ACTION_RESULT"
-    echo "Command: gsmctl -A AT+CUSD" >> "$ACTION_RESULT"
-    gsmctl -A "AT+CUSD=1,\"$CODE\",15" >> "$ACTION_RESULT" 2>&1
-    return
-  fi
-
-  echo "No supported USSD command found: ussd or gsmctl" >> "$ACTION_RESULT"
+  echo "No supported USSD command found: microcom" >> "$ACTION_RESULT"
 }
 
 run_call() {
@@ -189,19 +182,16 @@ run_call() {
     return
   fi
 
-  if command -v call >/dev/null 2>&1; then
-    echo "Command: call" >> "$ACTION_RESULT"
-    call "$NUMBER" >> "$ACTION_RESULT" 2>&1
+  if command -v microcom >/dev/null 2>&1; then
+    echo "Command: microcom (ATD)" >> "$ACTION_RESULT"
+    {
+      echo "ATD$NUMBER;"
+      sleep 2
+    } | microcom -t 3000 /dev/ttyUSB2 >> "$ACTION_RESULT" 2>&1
     return
   fi
 
-  if command -v gsmctl >/dev/null 2>&1; then
-    echo "Command: gsmctl -A ATD" >> "$ACTION_RESULT"
-    gsmctl -A "ATD$NUMBER;" >> "$ACTION_RESULT" 2>&1
-    return
-  fi
-
-  echo "No supported call command found: call or gsmctl" >> "$ACTION_RESULT"
+  echo "No supported call command found: microcom" >> "$ACTION_RESULT"
 }
 
 STATUS=""
@@ -230,7 +220,8 @@ if [ "${REQUEST_METHOD:-GET}" = "POST" ]; then
       ;;
     ussd)
       run_ussd "$TARGET"
-      STATUS="USSD command sent"
+      STATUS=`tail -n 1 "$ACTION_RESULT" 2>/dev/null`
+      [ -n "$STATUS" ] || STATUS="USSD request processed"
       log_debug "ussd target=$TARGET"
       ;;
     call)
@@ -264,7 +255,6 @@ pre { white-space: pre-wrap; word-break: break-word; border: 1px solid #ddd; pad
 </head>
 <body>
 <h3>Router SMS</h3>
-<div class="small">IP: ${REMOTE_ADDR:-unknown}</div>
 <div class="small">Time: $(now)</div>
 HTML
 
