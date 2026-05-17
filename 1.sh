@@ -259,7 +259,7 @@ pre { white-space: pre-wrap; word-break: break-word; border: 1px solid #ddd; pad
 HTML
 
 if [ -n "$STATUS" ]; then
-  echo "<p><b>$STATUS</b></p>"
+  echo "<p><b>`printf '%s' "$STATUS" | html_escape`</b></p>"
 fi
 
 cat <<HTML
